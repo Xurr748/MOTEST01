@@ -1,0 +1,287 @@
+
+{
+  "entities": {
+    "Article": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Article",
+      "type": "object",
+      "description": "Represents an article on senior nutrition and food safety.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Article entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the article."
+        },
+        "content": {
+          "type": "string",
+          "description": "Content of the article."
+        },
+        "publicationDate": {
+          "type": "string",
+          "description": "Date and time the article was published.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "publicationDate"
+      ]
+    },
+    "FoodItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FoodItem",
+      "type": "object",
+      "description": "Represents a food item from the central food database.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FoodItem entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the food item."
+        },
+        "calories": {
+          "type": "number",
+          "description": "Estimated calories for the food item."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the food item image.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "calories",
+        "imageUrl"
+      ]
+    },
+    "QuestionAnswer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "QuestionAnswer",
+      "type": "object",
+      "description": "Represents a question asked by the user and the AI's answer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the QuestionAnswer entity."
+        },
+        "question": {
+          "type": "string",
+          "description": "The question asked by the user."
+        },
+        "answer": {
+          "type": "string",
+          "description": "The AI's answer to the question."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the question was asked.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "answer",
+        "timestamp"
+      ]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user-specific profile information like height, weight, and health goals.",
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "number",
+          "description": "User's height in centimeters."
+        },
+        "weight": {
+          "type": "number",
+          "description": "User's weight in kilograms."
+        },
+        "bmi": {
+          "type": "number",
+          "description": "User's calculated Body Mass Index."
+        },
+        "dailyCalorieGoal": {
+          "type": "number",
+          "description": "User's recommended daily calorie intake goal."
+        }
+      }
+    },
+    "Meal": {
+      "title": "Meal",
+      "description": "Represents a single meal logged by the user.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the food item for the meal."
+        },
+        "calories": {
+          "type": "number",
+          "description": "Estimated calories for the meal."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the meal was logged."
+        }
+      },
+      "required": [
+        "name",
+        "calories",
+        "timestamp"
+      ]
+    },
+    "DailyLog": {
+      "title": "Daily Log",
+      "description": "A daily summary of a user's calorie consumption and meals.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date for which the log is recorded (usually start of day UTC)."
+        },
+        "consumedCalories": {
+          "type": "number",
+          "description": "Total calories consumed on this day."
+        },
+        "meals": {
+          "type": "array",
+          "description": "List of meals consumed on this day.",
+          "items": {
+            "$ref": "#/entities/Meal"
+          }
+        }
+      },
+      "required": [
+        "date",
+        "consumedCalories",
+        "meals"
+      ]
+    },
+    "StoredFoodItem": {
+      "title": "Stored Food Item",
+      "description": "Represents a food item saved to the central storage from a user's log.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the food item."
+        },
+        "calories": {
+          "type": "number",
+          "description": "Estimated calories for the food item."
+        }
+      },
+      "required": [
+        "name",
+        "calories"
+      ]
+    },
+    "ChatSession": {
+      "title": "Chat Session",
+      "description": "Represents a single chat session with the AI assistant, including the full conversation history.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this chat session."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the chat session was created."
+        },
+        "messages": {
+          "type": "array",
+          "description": "The array of messages in the conversation.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": ["user", "model"]
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      },
+      "required": ["userId", "createdAt", "messages"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/articles/{articleId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/Article" },
+          "description": "Collection for storing articles on senior nutrition and food safety."
+        }
+      },
+      {
+        "path": "/food_items/{foodItemId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/FoodItem" },
+          "description": "Collection for the central food item database, allowing users to select pre-defined meals."
+        }
+      },
+      {
+        "path": "/question_answers/{questionAnswerId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/QuestionAnswer" },
+          "description": "Collection for storing question and answer pairs from the interactive Q&A feature."
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/UserProfile" },
+          "description": "Stores user profile data."
+        }
+      },
+      {
+        "path": "/users/{userId}/dailyLogs/{logId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/DailyLog" },
+          "description": "Subcollection for a user's daily meal and calorie logs."
+        }
+      },
+      {
+        "path": "/food_storage/{foodStorageId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/StoredFoodItem" },
+          "description": "Central collection for all food items logged by users via image analysis."
+        }
+      },
+      {
+        "path": "/chats/{chatId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/ChatSession" },
+          "description": "Collection for storing user chat sessions with the AI assistant."
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for SeniorSafe is designed to address the application's requirements for managing articles, food items identified by the AI image scanner, and question/answer pairs. The structure emphasizes clarity, security, and scalability, adhering to the core design principles outlined. Each entity is stored in its own top-level collection to simplify security rules and querying.\n\nAuthorization Independence is achieved by avoiding hierarchical dependencies. There are no user specific security requirements so no denormalization is needed.\n\nThe structure supports QAPs by segregating data into distinct collections based on their purpose. All items in the collections can be retreived via `list` operations."
+  }
+}
