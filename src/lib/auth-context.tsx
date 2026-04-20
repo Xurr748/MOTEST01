@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isAnonymous: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -20,12 +21,14 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setIsAnonymous(false);
       setLoading(false);
     });
 
@@ -34,6 +37,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        setIsAnonymous(false);
         setLoading(false);
       }
     );
@@ -69,12 +73,14 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    setIsAnonymous(false);
   };
 
   const value = {
     user,
     session,
     loading,
+    isAnonymous,
     signIn,
     signUp,
     signOut,

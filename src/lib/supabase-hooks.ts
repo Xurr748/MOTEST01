@@ -18,20 +18,26 @@ export function useCollection(collectionName: string, userId?: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userId) return;
-
     const fetchData = async () => {
-      const { data, error } = await supabase
-        .from(collectionName)
-        .select('*')
-        .eq('userId', userId);
+      try {
+        let query = supabase.from(collectionName).select('*');
+        
+        if (userId) {
+          query = query.eq('userId', userId);
+        }
+        
+        const { data, error } = await query;
 
-      if (error) {
-        console.error('Error fetching data:', error);
-      } else {
-        setData(data || []);
+        if (error) {
+          console.error(`Error fetching ${collectionName}:`, error);
+        } else {
+          setData(data || []);
+        }
+      } catch (error) {
+        console.error(`Error fetching ${collectionName}:`, error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchData();
