@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import ManualFoodEntry from "@/components/ManualFoodEntry";
 import React, {
   useState,
   useEffect,
@@ -137,6 +138,7 @@ import {
   UploadCloud,
   Database,
   RotateCw,
+  BarChart2,
 } from "lucide-react";
 
 const UNIDENTIFIED_FOOD_MESSAGE = "ไม่สามารถระบุชนิดอาหารได้";
@@ -894,6 +896,12 @@ function FSFAPageFn() {
             <span className="text-xl font-bold tracking-tight">MOMU SCAN</span>
           </Link>
           <div className="flex items-center space-x-2">
+            <Link href="/reports">
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                <BarChart2 className="h-4 w-4" />
+                <span className="hidden sm:inline">รายงาน</span>
+              </Button>
+            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
@@ -1032,6 +1040,16 @@ function FSFAPageFn() {
               </Button>
             </CardFooter>
           </Card>
+
+          {/* Manual Food Entry */}
+          <ManualFoodEntry
+            dailyCalorieGoal={userProfile.dailyCalorieGoal}
+            currentConsumedCalories={dailyLog?.consumedCalories ?? 0}
+            onLogMeal={async (name, calories) => {
+              const ok = await logMealToDb(name, calories, "manual");
+              return ok;
+            }}
+          />
 
           {isLoadingImageAnalysis && (
             <Card>
