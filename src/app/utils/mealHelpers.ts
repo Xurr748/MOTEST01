@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { useSupabase } from '@/lib/supabase-hooks';
+import { supabase } from '@/lib/supabase';
 import { calculateAndSaveDailySummary } from '@/lib/summary-helpers';
 
 export const getStartOfUTCDay = () => {
@@ -15,7 +15,7 @@ export async function logMeal(
   const todayStr = format(startOfTodayUTC, 'yyyy-MM-dd');
 
   try {
-    const { data: existing, error: existErr } = await useSupabase()
+    const { data: existing, error: existErr } = await supabase
       .from('daily_logs')
       .select('*')
       .eq('user_id', currentUser.id)
@@ -24,7 +24,7 @@ export async function logMeal(
     if (existErr && existErr.code !== 'PGRST116') throw existErr;
 
     if (!existing) {
-      await useSupabase().from('daily_logs').insert({
+      await supabase.from('daily_logs').insert({
         user_id: currentUser.id,
         log_date: todayStr,
         consumed_calories: mealToLog.calories,
@@ -33,8 +33,8 @@ export async function logMeal(
     } else {
       const currentLogData = existing as any;
       const updatedMeals = [...(currentLogData.meals || []), mealToLog];
-      const updatedCalories = (currentLogData.consumedCalories || 0) + mealToLog.calories;
-      await useSupabase()
+      const updatedCalories = (currentLogData.consumed_calories || 0) + mealToLog.calories;
+      await supabase
         .from('daily_logs')
         .update({ meals: updatedMeals, consumed_calories: updatedCalories })
         .eq('id', (existing as any).id);
@@ -55,7 +55,7 @@ export async function reloadDailyLog(
 
   try {
     const todayStr = format(getStartOfUTCDay(), 'yyyy-MM-dd');
-    const { data: logData, error: logErr } = await useSupabase()
+    const { data: logData, error: logErr } = await supabase
       .from('daily_logs')
       .select('*')
       .eq('user_id', currentUser.id)
@@ -74,7 +74,7 @@ export async function reloadDailyLog(
       currentUser.id,
       new Date(),
       userProfile.dailyCalorieGoal,
-      useSupabase()
+      supabase
     );
   } catch (error) {
     console.error('Error reloading daily log:', error);

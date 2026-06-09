@@ -24,7 +24,7 @@ import {
 } from "@/ai/flows/post-scan-chat";
 import { supabase } from "@/lib/supabase";
 import { calculateBmiProfile } from "@/app/utils/bmiHelpers";
-import { handleAuthError as helperHandleAuthError } from "@/app/utils/authHelpers";
+// authHelpers is available but not needed here — auth errors are handled inline
 import {
   getUserProfile,
   upsertUserProfile,
@@ -1093,7 +1093,7 @@ function FSFAPageFn() {
                       <p className="text-xs text-muted-foreground mt-1">{imageAnalysisResult.nutritionalInformation.reasoning}</p>
                     )}
                   </div>
-                  {imageAnalysisResult.nutritionalInformation.visibleIngredients?.length > 0 && (
+                  {imageAnalysisResult.nutritionalInformation?.visibleIngredients?.length > 0 && (
                     <div>
                       <h4 className="font-semibold flex items-center gap-2 mb-2"><Wheat className="w-5 h-5 text-yellow-600" />ส่วนผสมที่พบ</h4>
                       <div className="flex flex-wrap gap-2">

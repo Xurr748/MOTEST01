@@ -20,8 +20,51 @@ function triggerDownload(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+/**
+ * Load Sarabun font from local public/fonts/ and register it with jsPDF.
+ * The full font files (from google/fonts GitHub repo) include Thai unicode cmap.
+ */
+async function registerThaiFont(doc: any): Promise<boolean> {
+  try {
+    // Fetch font files from Next.js public directory
+    const [normalBuf, boldBuf] = await Promise.all([
+      fetch("/fonts/Sarabun-Regular.ttf").then((r) => {
+        if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`);
+        return r.arrayBuffer();
+      }),
+      fetch("/fonts/Sarabun-Bold.ttf").then((r) => {
+        if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`);
+        return r.arrayBuffer();
+      }),
+    ]);
+
+    // Convert ArrayBuffer to base64
+    const toBase64 = (buf: ArrayBuffer) => {
+      const bytes = new Uint8Array(buf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    };
+
+    // Register fonts with jsPDF
+    doc.addFileToVFS("Sarabun-Regular.ttf", toBase64(normalBuf));
+    doc.addFont("Sarabun-Regular.ttf", "Sarabun", "normal");
+
+    doc.addFileToVFS("Sarabun-Bold.ttf", toBase64(boldBuf));
+    doc.addFont("Sarabun-Bold.ttf", "Sarabun", "bold");
+
+    doc.setFont("Sarabun");
+    return true;
+  } catch (e) {
+    console.warn("Failed to load Thai font, falling back to Helvetica:", e);
+    return false;
+  }
+}
+
 // ============================================================
-// PDF EXPORT — jsPDF + autoTable
+// PDF EXPORT — jsPDF + autoTable + Thai font
 // ============================================================
 export async function exportToPDF(
   rows: ReportRow[],
@@ -36,38 +79,42 @@ export async function exportToPDF(
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
+  // Register Thai-compatible font
+  const hasThai = await registerThaiFont(doc);
+  const fontName = hasThai ? "Sarabun" : "helvetica";
+
   // ── Header ──────────────────────────────────────────────
   doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text("MOMU SCAN - Calorie Report", 14, 18);
+  doc.setFont(fontName, "bold");
+  doc.text(hasThai ? "MOMU SCAN - รายงานแคลอรี่" : "MOMU SCAN - Calorie Report", 14, 18);
 
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Period: ${periodLabel}`, 14, 26);
-  doc.text(`Daily Limit: ${dailyLimit > 0 ? dailyLimit.toLocaleString() + " kcal" : "Not set"}`, 14, 32);
-  doc.text(`Exported: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 14, 38);
+  doc.setFont(fontName, "normal");
+  doc.text(`${hasThai ? "ช่วงเวลา" : "Period"}: ${periodLabel}`, 14, 26);
+  doc.text(`${hasThai ? "เป้าหมายต่อวัน" : "Daily Limit"}: ${dailyLimit > 0 ? dailyLimit.toLocaleString() + " kcal" : (hasThai ? "ไม่ได้ตั้ง" : "Not set")}`, 14, 32);
+  doc.text(`${hasThai ? "ส่งออกเมื่อ" : "Exported"}: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 14, 38);
 
   const totalCalories = rows.reduce((s, r) => s + r.consumedCalories, 0);
   const avgCalories = rows.length > 0 ? Math.round(totalCalories / rows.length) : 0;
 
-  doc.text(`Total Calories: ${totalCalories.toLocaleString()} kcal`, 14, 44);
-  doc.text(`Average per Day: ${avgCalories.toLocaleString()} kcal`, 14, 50);
+  doc.text(`${hasThai ? "แคลอรี่รวม" : "Total Calories"}: ${totalCalories.toLocaleString()} kcal`, 14, 44);
+  doc.text(`${hasThai ? "เฉลี่ยต่อวัน" : "Average per Day"}: ${avgCalories.toLocaleString()} kcal`, 14, 50);
 
   // ── Summary Table ────────────────────────────────────────
   const summaryBody = rows.map((r) => [
     format(r.date, "dd/MM/yyyy"),
-    format(r.date, "EEEE", { locale: th }),
+    hasThai ? format(r.date, "EEEE", { locale: th }) : format(r.date, "EEEE"),
     r.consumedCalories.toLocaleString(),
-    dailyLimit > 0 ? (r.consumedCalories > dailyLimit ? "OVER" : "OK") : "-",
+    dailyLimit > 0 ? (r.consumedCalories > dailyLimit ? (hasThai ? "เกิน" : "OVER") : (hasThai ? "ผ่าน" : "OK")) : "-",
     r.meals.length.toString(),
   ]);
 
   autoTable(doc, {
     startY: 56,
-    head: [["Date", "Day", "Calories (kcal)", "vs Limit", "# Meals"]],
+    head: [hasThai ? ["วันที่", "วัน", "แคลอรี่ (kcal)", "เทียบเป้า", "จำนวนมื้อ"] : ["Date", "Day", "Calories (kcal)", "vs Limit", "# Meals"]],
     body: summaryBody,
-    styles: { fontSize: 9, cellPadding: 3 },
-    headStyles: { fillColor: [99, 102, 241] },
+    styles: { fontSize: 9, cellPadding: 3, font: fontName },
+    headStyles: { fillColor: [99, 102, 241], font: fontName, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [245, 245, 250] },
     columnStyles: { 2: { halign: "right" }, 3: { halign: "center" }, 4: { halign: "center" } },
   });
@@ -81,23 +128,26 @@ export async function exportToPDF(
 
     finalY += 8;
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontName, "bold");
+    const dateLabel = hasThai
+      ? `มื้ออาหารวันที่ ${format(row.date, "dd MMM yyyy", { locale: th })}`
+      : `Meals on ${format(row.date, "dd MMM yyyy")}`;
     doc.text(
-      `Meals on ${format(row.date, "dd MMM yyyy", { locale: th })} — ${row.consumedCalories.toLocaleString()} kcal`,
+      `${dateLabel} — ${row.consumedCalories.toLocaleString()} kcal`,
       14,
       finalY
     );
 
     autoTable(doc, {
       startY: finalY + 3,
-      head: [["Food Item", "Calories (kcal)", "Time"]],
+      head: [hasThai ? ["รายการอาหาร", "แคลอรี่ (kcal)", "เวลา"] : ["Food Item", "Calories (kcal)", "Time"]],
       body: row.meals.map((m) => [
         m.name,
         m.calories.toLocaleString(),
         m.logged_at ? format(new Date(m.logged_at), "HH:mm") : "",
       ]),
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [148, 163, 184] },
+      styles: { fontSize: 8, cellPadding: 2, font: fontName },
+      headStyles: { fillColor: [148, 163, 184], font: fontName, fontStyle: "bold" },
       margin: { left: 18 },
     });
 
@@ -123,22 +173,22 @@ export async function exportToExcel(
 
   // ── Sheet 1: Summary ─────────────────────────────────────
   const summaryData: (string | number)[][] = [
-    ["MOMU SCAN - Calorie Report"],
-    [`Period: ${periodLabel}`],
-    [`Daily Limit: ${dailyLimit > 0 ? dailyLimit.toLocaleString() + " kcal" : "Not set"}`],
-    [`Exported: ${format(new Date(), "dd/MM/yyyy HH:mm")}`],
+    ["MOMU SCAN - รายงานแคลอรี่"],
+    [`ช่วงเวลา: ${periodLabel}`],
+    [`เป้าหมายต่อวัน: ${dailyLimit > 0 ? dailyLimit.toLocaleString() + " kcal" : "ไม่ได้ตั้ง"}`],
+    [`ส่งออกเมื่อ: ${format(new Date(), "dd/MM/yyyy HH:mm")}`],
     [],
-    ["Date", "Day (TH)", "Calories (kcal)", "vs Limit", "# Meals"],
+    ["วันที่", "วัน", "แคลอรี่ (kcal)", "เทียบเป้า", "จำนวนมื้อ"],
     ...rows.map((r) => [
       format(r.date, "dd/MM/yyyy"),
       format(r.date, "EEEE", { locale: th }),
       r.consumedCalories,
-      dailyLimit > 0 ? (r.consumedCalories > dailyLimit ? "OVER" : "OK") : "-",
+      dailyLimit > 0 ? (r.consumedCalories > dailyLimit ? "เกิน" : "ผ่าน") : "-",
       r.meals.length,
     ]),
     [],
-    ["Total", "", rows.reduce((s, r) => s + r.consumedCalories, 0), "", rows.reduce((s, r) => s + r.meals.length, 0)],
-    ["Average", "", rows.length > 0 ? Math.round(rows.reduce((s, r) => s + r.consumedCalories, 0) / rows.length) : 0, "", ""],
+    ["รวม", "", rows.reduce((s, r) => s + r.consumedCalories, 0), "", rows.reduce((s, r) => s + r.meals.length, 0)],
+    ["เฉลี่ย", "", rows.length > 0 ? Math.round(rows.reduce((s, r) => s + r.consumedCalories, 0) / rows.length) : 0, "", ""],
   ];
 
   const summaryWS = XLSX.utils.aoa_to_sheet(summaryData);
@@ -147,7 +197,7 @@ export async function exportToExcel(
 
   // ── Sheet 2: Meal Details ─────────────────────────────────
   const mealData: (string | number)[][] = [
-    ["Date", "Food Item", "Calories (kcal)", "Time", "Source"],
+    ["วันที่", "รายการอาหาร", "แคลอรี่ (kcal)", "เวลา", "แหล่งที่มา"],
   ];
   for (const row of rows) {
     for (const m of row.meals) {

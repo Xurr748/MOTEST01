@@ -23,7 +23,7 @@ export function useCollection(collectionName: string, userId?: string) {
         let query = supabase.from(collectionName).select('*');
         
         if (userId) {
-          query = query.eq('userId', userId);
+          query = query.eq('user_id', userId);
         }
         
         const { data, error } = await query;

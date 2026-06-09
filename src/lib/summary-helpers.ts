@@ -48,10 +48,10 @@ export async function calculateAndSaveDailySummary(
     const sb = client || supabase;
     const dateStr = format(date, 'yyyy-MM-dd');
     
-    // Fetch meals for this day
+    // Fetch daily log with meal_entries joined
     const { data: dailyLog, error } = await sb
       .from('daily_logs')
-      .select('*')
+      .select('*, meal_entries(*)')
       .eq('user_id', userId)
       .eq('log_date', dateStr)
       .single();
@@ -62,7 +62,7 @@ export async function calculateAndSaveDailySummary(
     }
 
     const totalCalories = dailyLog?.consumed_calories || 0;
-    const mealsCount = dailyLog?.meals?.length || 0;
+    const mealsCount = dailyLog?.meal_entries?.length || 0;
 
     // Upsert summary
     const { data: summary, error: summaryError } = await sb
@@ -112,7 +112,7 @@ export async function calculateAndSaveWeeklySummary(
     // Fetch logs for this week
     const { data: weeklyLogs, error } = await sb
       .from('daily_logs')
-      .select('*')
+      .select('*, meal_entries(*)')
       .eq('user_id', userId)
       .gte('log_date', startStr)
       .lte('log_date', endStr);
@@ -125,7 +125,7 @@ export async function calculateAndSaveWeeklySummary(
     const logs = weeklyLogs || [];
     const totalCalories = logs.reduce((sum, log) => sum + (log.consumed_calories || 0), 0);
     const averageCalories = logs.length > 0 ? Math.round(totalCalories / logs.length) : 0;
-    const mealsCount = logs.reduce((count, log) => count + (log.meals?.length || 0), 0);
+    const mealsCount = logs.reduce((count, log) => count + (log.meal_entries?.length || 0), 0);
 
     // Upsert summary
     const { data: summary, error: summaryError } = await sb
@@ -178,7 +178,7 @@ export async function calculateAndSaveMonthlySummary(
     // Fetch logs for this month
     const { data: monthlyLogs, error } = await sb
       .from('daily_logs')
-      .select('*')
+      .select('*, meal_entries(*)')
       .eq('user_id', userId)
       .gte('log_date', startStr)
       .lte('log_date', endStr);
@@ -191,7 +191,7 @@ export async function calculateAndSaveMonthlySummary(
     const logs = monthlyLogs || [];
     const totalCalories = logs.reduce((sum, log) => sum + (log.consumed_calories || 0), 0);
     const averageCalories = logs.length > 0 ? Math.round(totalCalories / logs.length) : 0;
-    const mealsCount = logs.reduce((count, log) => count + (log.meals?.length || 0), 0);
+    const mealsCount = logs.reduce((count, log) => count + (log.meal_entries?.length || 0), 0);
 
     // Upsert summary
     const { data: summary, error: summaryError } = await sb
@@ -239,14 +239,14 @@ export async function getDailySummaryWithGoal(
       .eq('summary_date', dateStr)
       .single(),
     sb
-      .from('users')
-      .select('dailyCalorieGoal')
+      .from('user_profiles')
+      .select('daily_calorie_goal')
       .eq('id', userId)
       .single(),
   ]);
 
   const summary = summaryRes.data as DailySummary | null;
-  const dailyGoal = profileRes.data?.dailyCalorieGoal as number | null;
+  const dailyGoal = profileRes.data?.daily_calorie_goal as number | null;
 
   return {
     summary,

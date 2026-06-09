@@ -57,11 +57,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     // Create user record in users table after signup
     if (data.user) {
       const { error: profileError } = await supabase
-        .from('users')
-        .insert({
+        .from('user_profiles')
+        .upsert({
           id: data.user.id,
-          email: data.user.email,
-          is_anonymous: false,
         });
       if (profileError && profileError.code !== '23505') { // 23505 = unique violation
         console.error('Error creating user profile:', profileError);
