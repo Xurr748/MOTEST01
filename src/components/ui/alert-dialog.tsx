@@ -5,6 +5,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { type VariantProps } from "class-variance-authority"
 
 const AlertDialog = AlertDialogPrimitive.Root
 
@@ -100,7 +101,7 @@ AlertDialogDescription.displayName =
 
 interface AlertDialogActionProps
   extends React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> {
-  size?: string;
+  size?: VariantProps<typeof buttonVariants>["size"];
 }
 
 const AlertDialogAction = React.forwardRef<
@@ -117,7 +118,7 @@ AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
 
 interface AlertDialogCancelProps
   extends React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel> {
-  size?: string;
+  size?: VariantProps<typeof buttonVariants>["size"];
 }
 
 const AlertDialogCancel = React.forwardRef<
