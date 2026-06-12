@@ -54,6 +54,24 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 }
 
 export async function upsertUserProfile(userId: string, profile: UserProfile): Promise<boolean> {
+  // Server-side validation — reject unrealistic values
+  if (profile.height !== undefined && (profile.height < 50 || profile.height > 300)) {
+    console.error('upsertUserProfile: height out of range', profile.height);
+    return false;
+  }
+  if (profile.weight !== undefined && (profile.weight < 10 || profile.weight > 500)) {
+    console.error('upsertUserProfile: weight out of range', profile.weight);
+    return false;
+  }
+  if (profile.bmi !== undefined && (profile.bmi < 5 || profile.bmi > 100)) {
+    console.error('upsertUserProfile: bmi out of range', profile.bmi);
+    return false;
+  }
+  if (profile.daily_calorie_goal !== undefined && (profile.daily_calorie_goal < 500 || profile.daily_calorie_goal > 10000)) {
+    console.error('upsertUserProfile: daily_calorie_goal out of range', profile.daily_calorie_goal);
+    return false;
+  }
+
   const { error } = await supabase
     .from('user_profiles')
     .upsert({ id: userId, ...profile, updated_at: new Date().toISOString() });
@@ -169,6 +187,38 @@ export async function addMealEntry(
     return null;
   }
   return data as MealEntry;
+}
+
+export async function deleteMealEntry(
+  mealId: string,
+  dailyLogId: string,
+  mealCalories: number,
+  currentConsumed: number
+): Promise<boolean> {
+  // Delete meal entry
+  const { error: deleteError } = await supabase
+    .from('meal_entries')
+    .delete()
+    .eq('id', mealId);
+  
+  if (deleteError) {
+    console.error('deleteMealEntry error:', deleteError);
+    return false;
+  }
+
+  // Update daily log
+  const newConsumed = Math.max(0, currentConsumed - mealCalories);
+  const { error: updateError } = await supabase
+    .from('daily_logs')
+    .update({ consumed_calories: newConsumed, updated_at: new Date().toISOString() })
+    .eq('id', dailyLogId);
+
+  if (updateError) {
+    console.error('deleteMealEntry update daily_logs error:', updateError);
+    return false;
+  }
+
+  return true;
 }
 
 // ============================================================

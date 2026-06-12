@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
 import { getLogsForDateRange, type DailyLogRecord } from "@/lib/db";
 import { exportToPDF, exportToExcel, type ReportRow } from "@/lib/export-utils";
@@ -37,12 +38,11 @@ interface DayData {
 }
 
 const chartConfig = {
-  calories: { label: "แคลอรี่", color: "hsl(var(--chart-1))" },
+  calories: { label: "แคลอรี่", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 function ReportsPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const { user: currentUser, loading: isAuthLoading } = useAuth();
   const [dailyGoal, setDailyGoal] = useState(0);
 
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
@@ -53,23 +53,11 @@ function ReportsPage() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingXls, setIsExportingXls] = useState(false);
 
-  // ── Auth ───────────────────────────────────────────────────
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setCurrentUser(session?.user ?? null);
-      setIsAuthLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setCurrentUser(s?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
   // Load calorie goal from profile
   useEffect(() => {
     if (!currentUser) return;
     supabase.from("user_profiles").select("daily_calorie_goal").eq("id", currentUser.id).single()
-      .then(({ data }) => { if (data?.daily_calorie_goal) setDailyGoal(data.daily_calorie_goal); });
+      .then(({ data }: any) => { if (data?.daily_calorie_goal) setDailyGoal(data.daily_calorie_goal); });
   }, [currentUser]);
 
   // ── Date range from anchor + mode ─────────────────────────
@@ -195,7 +183,7 @@ function ReportsPage() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <Link href="/">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="กลับหน้าหลัก">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
@@ -226,11 +214,11 @@ function ReportsPage() {
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goBack}>
+            <Button variant="outline" size="icon" onClick={goBack} aria-label="ช่วงเวลาก่อนหน้า">
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm font-semibold min-w-[180px] text-center">{periodLabel}</span>
-            <Button variant="outline" size="icon" onClick={goForward} disabled={isAtPresent}>
+            <Button variant="outline" size="icon" onClick={goForward} disabled={isAtPresent} aria-label="ช่วงเวลาถัดไป">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -285,11 +273,11 @@ function ReportsPage() {
                   <ChartContainer config={chartConfig} className="min-h-[220px] w-full">
                     <BarChart data={chartData} accessibilityLayer>
                       <CartesianGrid vertical={false} />
-                      <XAxis dataKey="name" tickLine={false} tickMargin={8} axisLine={false} fontSize={11} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                      <XAxis dataKey="name" tickLine={false} tickMargin={8} axisLine={false} fontSize={11} stroke="var(--muted-foreground)" />
+                      <YAxis stroke="var(--muted-foreground)" fontSize={10} />
                       <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                       {dailyGoal > 0 && (
-                        <ReferenceLine y={dailyGoal} stroke="hsl(var(--destructive))" strokeDasharray="4 4" label={{ value: "Limit", position: "right", fontSize: 10 }} />
+                        <ReferenceLine y={dailyGoal} stroke="var(--destructive)" strokeDasharray="4 4" label={{ value: "Limit", position: "right", fontSize: 10 }} />
                       )}
                       <Bar dataKey="calories" fill="var(--color-calories)" radius={viewMode === "monthly" ? 2 : 6} />
                     </BarChart>
@@ -363,8 +351,9 @@ function ReportsPage() {
         )}
       </main>
 
-      <footer className="text-center py-8 border-t mt-8">
-        <p className="text-xs text-muted-foreground">MOMU SCAN Reports — {currentUser.email}</p>
+      <footer className="text-center py-6 border-t mt-8">
+        <p className="text-xs text-muted-foreground">MOMU SCAN v1.0 — รายงานสรุป</p>
+        <p className="text-xs text-muted-foreground mt-1">{currentUser.email}</p>
       </footer>
     </div>
   );
