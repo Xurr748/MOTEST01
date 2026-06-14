@@ -227,8 +227,26 @@ function FSFAPageFn() {
   useEffect(() => { setFormattedToday(format(new Date(), "d MMMM yyyy", { locale: th })); }, []);
 
   // Session storage for image analysis
-  useEffect(() => { if (imageAnalysisResult) sessionStorage.setItem("imageAnalysisResult", JSON.stringify(imageAnalysisResult)); }, [imageAnalysisResult]);
-  useEffect(() => { if (previewUrl) sessionStorage.setItem("previewUrl", previewUrl); }, [previewUrl]);
+  useEffect(() => { 
+    if (imageAnalysisResult) {
+      try {
+        sessionStorage.setItem("imageAnalysisResult", JSON.stringify(imageAnalysisResult)); 
+      } catch (e) {
+        console.warn("Storage quota exceeded for imageAnalysisResult");
+      }
+    }
+  }, [imageAnalysisResult]);
+  
+  useEffect(() => { 
+    if (previewUrl) {
+      try {
+        sessionStorage.setItem("previewUrl", previewUrl); 
+      } catch (e) {
+        console.warn("Storage quota exceeded for previewUrl");
+      }
+    }
+  }, [previewUrl]);
+  
   useEffect(() => {
     const r = sessionStorage.getItem("imageAnalysisResult");
     const p = sessionStorage.getItem("previewUrl");
