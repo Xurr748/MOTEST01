@@ -123,9 +123,9 @@ export async function calculateAndSaveWeeklySummary(
     }
 
     const logs = weeklyLogs || [];
-    const totalCalories = logs.reduce((sum, log) => sum + (log.consumed_calories || 0), 0);
+    const totalCalories = logs.reduce((sum: number, log: any) => sum + (log.consumed_calories || 0), 0);
     const averageCalories = logs.length > 0 ? Math.round(totalCalories / logs.length) : 0;
-    const mealsCount = logs.reduce((count, log) => count + (log.meal_entries?.length || 0), 0);
+    const mealsCount = logs.reduce((count: number, log: any) => count + (log.meal_entries?.length || 0), 0);
 
     // Upsert summary
     const { data: summary, error: summaryError } = await sb
@@ -189,9 +189,9 @@ export async function calculateAndSaveMonthlySummary(
     }
 
     const logs = monthlyLogs || [];
-    const totalCalories = logs.reduce((sum, log) => sum + (log.consumed_calories || 0), 0);
+    const totalCalories = logs.reduce((sum: number, log: any) => sum + (log.consumed_calories || 0), 0);
     const averageCalories = logs.length > 0 ? Math.round(totalCalories / logs.length) : 0;
-    const mealsCount = logs.reduce((count, log) => count + (log.meal_entries?.length || 0), 0);
+    const mealsCount = logs.reduce((count: number, log: any) => count + (log.meal_entries?.length || 0), 0);
 
     // Upsert summary
     const { data: summary, error: summaryError } = await sb
