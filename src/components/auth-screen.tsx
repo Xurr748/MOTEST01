@@ -110,6 +110,21 @@ export default function AuthScreen({ onAuthSuccess }: { onAuthSuccess: () => voi
                   {isLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : mode === "login" ? <LogIn className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
                   {mode === "login" ? "เข้าสู่ระบบ" : "สร้างบัญชี"}
                 </Button>
+                {mode === "login" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-dashed border-primary/40 text-xs sm:text-sm hover:bg-primary/10"
+                    onClick={() => {
+                      setEmail("demo@momu.com");
+                      setPassword("Password123!");
+                      setError("");
+                    }}
+                    disabled={isLoading}
+                  >
+                    ⚡ ใช้บัญชีทดลอง (Demo: มีรายงานครบ)
+                  </Button>
+                )}
               </form>
             </CardContent>
             <CardFooter className="justify-center pt-0">
