@@ -31,14 +31,11 @@ export interface ScanFoodImageOutput {
 ========================= */
 
 export async function scanFoodImage(input: ScanFoodImageInput): Promise<ScanFoodImageOutput> {
-  try {
-    const model = getModel('gemini-3.8-flash');
-    
-    // Convert base64 data URI to image parts
-    const base64Data = input.foodImage.split(',')[1] || input.foodImage;
-    const mimeType = input.foodImage.includes('data:image/jpeg') ? 'image/jpeg' : 'image/png';
-    
-    const prompt = `
+  const candidateModels = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3-flash-preview'];
+  const base64Data = input.foodImage.split(',')[1] || input.foodImage;
+  const mimeType = input.foodImage.includes('data:image/jpeg') ? 'image/jpeg' : 'image/png';
+
+  const prompt = `
 คุณคือผู้เชี่ยวชาญด้านโภชนาการ
 วิเคราะห์รูปภาพอาหารนี้และสรุปผลให้สั้น กระชับ อ่านง่าย
 
@@ -59,51 +56,61 @@ export async function scanFoodImage(input: ScanFoodImageInput): Promise<ScanFood
 - reasoning ให้สั้น ไม่เกิน 1-2 บรรทัด
 - ไม่ต้องอธิบายยาว
 `;
-    
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType,
+
+  let lastError: any = null;
+
+  for (const modelName of candidateModels) {
+    try {
+      const model = getModel(modelName);
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType,
+          },
         },
-      },
-      prompt,
-    ]);
-    
-    const response = result.response;
-    const text = response.text();
-    
-    // Parse JSON response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('ไม่สามารถแยก JSON จากการตอบสนองของ AI');
-    }
-    
-    const output = JSON.parse(jsonMatch[0]) as ScanFoodImageOutput;
-    return output;
-  } catch (err: any) {
-    console.error('Scan Error Details:', err);
-    
-    let thaiReason = 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI';
-    const errorMessage = err.message || '';
+        prompt,
+      ]);
 
-    if (errorMessage.includes('403')) {
-      thaiReason = '🚨 บริการถูกระงับ: บัญชี Google ยังไม่พร้อมใช้งาน หรือสิทธิ์การเข้าถึง API ถูกบล็อก (ตรวจสอบที่ console.cloud.google.com)';
-    } else if (errorMessage.includes('400')) {
-      thaiReason = '🚨 API Key ไม่ถูกต้อง หรือไม่ได้ตั้งค่าในระบบ';
-    } else if (errorMessage.includes('429')) {
-      thaiReason = '🚨 ใช้งานเกินขีดจำกัด (Quota Exceeded) โปรดรอสักครู่แล้วลองใหม่';
-    }
+      const response = result.response;
+      const text = response.text();
 
-    return {
-      cuisineType: 'เกิดข้อผิดพลาด',
-      foodItem: 'ระบบไม่พร้อมใช้งาน',
-      nutritionalInformation: {
-        estimatedCalories: 0,
-        visibleIngredients: [],
-        reasoning: thaiReason + (errorMessage ? ` (${errorMessage})` : ''),
-        confidence: 0,
-      },
-    };
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('ไม่สามารถแยก JSON จากการตอบสนองของ AI');
+      }
+
+      const output = JSON.parse(jsonMatch[0]) as ScanFoodImageOutput;
+      return output;
+    } catch (err: any) {
+      console.warn(`Model ${modelName} failed, trying next fallback:`, err.message);
+      lastError = err;
+    }
   }
+
+  // If all models fail
+  console.error('All Scan Models Failed. Last Error:', lastError);
+  let thaiReason = 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI';
+  const errorMessage = lastError?.message || '';
+
+  if (errorMessage.includes('503')) {
+    thaiReason = '🚨 เซิร์ฟเวอร์ AI มีผู้ใช้งานหนาแน่นชั่วคราว (High Demand) โปรดกดลองใหม่อีกครั้ง';
+  } else if (errorMessage.includes('403')) {
+    thaiReason = '🚨 บริการถูกระงับ: บัญชี Google ยังไม่พร้อมใช้งาน หรือสิทธิ์การเข้าถึง API ถูกบล็อก (ตรวจสอบที่ console.cloud.google.com)';
+  } else if (errorMessage.includes('400')) {
+    thaiReason = '🚨 API Key ไม่ถูกต้อง หรือไม่ได้ตั้งค่าในระบบ';
+  } else if (errorMessage.includes('429')) {
+    thaiReason = '🚨 ใช้งานเกินขีดจำกัด (Quota Exceeded) โปรดรอสักครู่แล้วลองใหม่';
+  }
+
+  return {
+    cuisineType: 'เกิดข้อผิดพลาด',
+    foodItem: 'ระบบไม่พร้อมใช้งาน',
+    nutritionalInformation: {
+      estimatedCalories: 0,
+      visibleIngredients: [],
+      reasoning: thaiReason + (errorMessage ? ` (${errorMessage})` : ''),
+      confidence: 0,
+    },
+  };
 }

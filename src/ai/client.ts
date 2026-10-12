@@ -9,7 +9,7 @@ if (!apiKey) {
 export const genAI = new GoogleGenerativeAI(apiKey);
 
 // Get the model with safety settings
-export function getModel(modelName: string = "gemini-3.8-flash") {
+export function getModel(modelName: string = "gemini-3.5-flash") {
   return genAI.getGenerativeModel({
     model: modelName,
     safetySettings: [
