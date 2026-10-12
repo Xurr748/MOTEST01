@@ -32,7 +32,7 @@ export interface ScanFoodImageOutput {
 
 export async function scanFoodImage(input: ScanFoodImageInput): Promise<ScanFoodImageOutput> {
   try {
-    const model = getModel('gemini-2.5-flash');
+    const model = getModel('gemini-3.8-flash');
     
     // Convert base64 data URI to image parts
     const base64Data = input.foodImage.split(',')[1] || input.foodImage;

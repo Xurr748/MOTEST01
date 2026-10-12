@@ -22,7 +22,7 @@ export interface ChatOutput {
 
 export async function chatWithBot(input: ChatInput): Promise<ChatOutput> {
   try {
-    const model = getModel('gemini-2.5-flash');
+    const model = getModel('gemini-3.8-flash');
     
     // Build conversation history
     const conversationHistory = (input.history || []).map((msg) => ({
